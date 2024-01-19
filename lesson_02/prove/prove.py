@@ -38,6 +38,18 @@ this dictionary to make other API calls for data.
 }
 """
 
+"""
+Right click on server
+Open in Integrated terminal
+type: python ser (tab)
+enter
+
+Right click on prove
+Open in Integrate terminal
+python .\prove.py
+enter
+"""
+
 from datetime import datetime, timedelta
 import requests
 import json
