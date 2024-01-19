@@ -34,6 +34,7 @@ from cse251 import *
 class Request_thread(threading.Thread):
     
     def __init__(self, url):
+        super().__init__()
         self.url = url
         self.response = {}
         self.status_code = {}
@@ -89,7 +90,7 @@ class Deck:
 
 if __name__ == '__main__':
 
-    deck_id = '9k8oo2t3qi59'
+    deck_id = 'ph7jfurkyqsa'
 
     # Testing Code >>>>>
     deck = Deck(deck_id)
