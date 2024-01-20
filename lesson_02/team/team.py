@@ -11,18 +11,6 @@ Instructions:
 - Review instructions in Canvas.
 """
 
-"""
-Deck created:
-
-{
-  "success": true,
-  "deck_id": "9k8oo2t3qi59",
-  "remaining": 52,
-  "shuffled": false
-}
-9k8oo2t3qi59
-"""
-
 from datetime import datetime, timedelta
 import threading
 import requests
