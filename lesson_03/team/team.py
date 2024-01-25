@@ -96,6 +96,7 @@ class Board():
     def highlight(self, row, col, on=True):
         """ Turn on/off highlighting for a letter """
         self.highlighting[row][col] = on
+        # self.spaces_to_highlight.append([row, col])
 
     def get_size(self):
         """ Return the size of the board """
@@ -116,6 +117,7 @@ class Board():
                     print(f'{bcolors.WARNING}{bcolors.BOLD}{self.board[row][col]}{bcolors.ENDC} ', end='')
                 else:
                     print(f'{self.board[row][col]} ', end='')
+                # print(self.highlighting[row][col], end='')
             print()
 
     def _word_at_this_location(self, row, col, direction, word):
@@ -140,7 +142,7 @@ class Board():
             for col in range(self.size):
                 for d in range(0, 8):
                     if self._word_at_this_location(row, col, d, word):
-                        return True
+                        return [row, col, d, word]
         return False
 
 
@@ -149,9 +151,13 @@ def main():
     board.display()
 
     start = time.perf_counter()
-    for word in words:
-        if not board.find_word(word):
-            print(f'Error: Could not find "{word}"')
+
+    with mp.Pool(16) as p:
+        found_word = p.map(board.find_word, words)
+        
+    for word in found_word:
+        if word != False:
+            board._word_at_this_location(*word)
     
     total_time = time.perf_counter() - start
 
