@@ -28,9 +28,7 @@ from cse251 import *
 # 4 more than the number of cpu's on your computer
 CPU_COUNT = mp.cpu_count() + 4
 
-# TODO Your final video needs to have 300 processed frames.
-# However, while you are testing your code, set this much lower!
-FRAME_COUNT = 20
+FRAME_COUNT = 300
 
 # RGB values for reference
 RED = 0
@@ -88,7 +86,7 @@ def main():
             start_time = timeit.default_timer()
             p.map(process_frame, frame_list)
             end_time = timeit.default_timer() - start_time
-            print(f'\nTime To Process all images = {end_time}')
+            log.write(f'Time To Process {FRAME_COUNT} frames using {i} processes: {end_time}')
             xaxis_cpus.append(i)
             yaxis_times.append(end_time)
 
