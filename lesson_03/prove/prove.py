@@ -66,6 +66,13 @@ def create_new_frame(image_file, green_file, process_file):
     image_new.save(process_file)
 
 
+def process_frame(image_number):
+    image_file = rf'elephant\image{image_number:03d}.png'
+    green_file = rf'green\image{image_number:03d}.png'
+    process_file = rf'processed\image{image_number:03d}.png'
+
+    create_new_frame(image_file, green_file, process_file)
+
 def main():
     all_process_time = timeit.default_timer()
     log = Log(show_terminal=True)
@@ -74,18 +81,27 @@ def main():
     yaxis_times = []
 
     # TODO Process all frames trying 1 cpu, then 2, then 3, ... to CPU_COUNT
+    frame_list = list(range(1, FRAME_COUNT + 1))
+
+    for i in range(1, CPU_COUNT + 1):
+        with mp.Pool(i) as p:
+            start_time = timeit.default_timer()
+            p.map(process_frame, frame_list)
+            end_time = timeit.default_timer() - start_time
+            print(f'\nTime To Process all images = {end_time}')
+            xaxis_cpus.append(i)
+            yaxis_times.append(end_time)
+
 
     # sample code: remove before submitting  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     # process one frame #10
-    image_number = 10
+    # image_number = 10
 
-    image_file = rf'elephant\image{image_number:03d}.png'
-    green_file = rf'green\image{image_number:03d}.png'
-    process_file = rf'processed\image{image_number:03d}.png'
+    # image_file = rf'elephant\image{image_number:03d}.png'
+    # green_file = rf'green\image{image_number:03d}.png'
+    # process_file = rf'processed\image{image_number:03d}.png'
 
-    start_time = timeit.default_timer()
-    create_new_frame(image_file, green_file, process_file)
-    print(f'\nTime To Process all images = {timeit.default_timer() - start_time}')
+    # create_new_frame(image_file, green_file, process_file)
     # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     # Log the total time this took
