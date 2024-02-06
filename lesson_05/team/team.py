@@ -22,7 +22,7 @@ from os.path import exists
 #Include cse 251 common Python files
 from cse251 import *
 
-PRIME_PROCESS_COUNT = 1
+PRIME_PROCESS_COUNT = 3
 
 def is_prime(n: int) -> bool:
     """Primality test using 6k+-1 optimization.
@@ -39,11 +39,34 @@ def is_prime(n: int) -> bool:
         i += 6
     return True
 
+def read_thread(filename, shared_unfiltered, sem):
+    # log.write('Started reading file')
+    with open(filename) as file:
+        for line in file:
+            num = int(line.strip())
+            shared_unfiltered.put(num)
+            print(f'Added: {num}')
+            sem.release()
+    for _ in range(PRIME_PROCESS_COUNT):
+        shared_unfiltered.put('DONE')
+        sem.release()
+    # log.write('Finished reading file')
 
-# TODO create read_thread function
 
-
-# TODO create prime_process function
+def prime_processes(shared_unfiltered, shared_primes, sem):
+    # log.write('Started processing numbers')
+    while True:
+        sem.acquire()
+        possible_num = shared_unfiltered.get()
+        print(f'Processing: {possible_num}')
+        # log.write(f'Processing: {possible_num}')
+        if type(possible_num) != int:
+            # log.write('Finished processing numbers')
+            break
+        is_num_prime = is_prime(possible_num)
+        if is_num_prime:
+            shared_primes.put(possible_num)
+            print(f'Found prime: {possible_num}')
 
 
 def create_data_txt(filename):
@@ -64,21 +87,46 @@ def main():
     log = Log(show_terminal=True)
     log.start_timer()
 
-    # TODO Create shared data structures
+    # Create shared data structures
+    processes = []
+    sem = mp.Semaphore(0)
+    unfiltered = mp.Queue()
+    primes = mp.Queue()
+    log.write('Created shared structures')
 
-    # TODO create reading thread
+    # Create reading thread
+    reader = mp.Process(target=read_thread, args=(filename, unfiltered, sem))
+    log.write('Created reader')
 
-    # TODO create prime processes
+    # Create prime processes
+    for _ in range(PRIME_PROCESS_COUNT):
+        processor = mp.Process(target=prime_processes, args=(unfiltered, primes, sem))
+        processes.append(processor)
+    log.write('Created processors')
 
-    # TODO Start them all
+    # Start them all
+    reader.start()
+    for i in processes:
+        i.start()
+    log.write('Started')
 
-    # TODO wait for them to complete
+    # Wait for them to complete
+    reader.join()
+    for i in processes:
+        i.join()
+    log.write('Joined')
+    primes.put('STOP')
 
     log.stop_timer(f'All primes have been found using {PRIME_PROCESS_COUNT} processes')
 
+    primes_list = []
+    
+    for i in iter(primes.get, 'STOP'):
+        primes_list.append(i)
+
     # display the list of primes
-    print(f'There are {len(primes)} found:')
-    for prime in primes:
+    print(f'There are {len(primes_list)} found:')
+    for prime in primes_list:
         print(prime)
 
 
