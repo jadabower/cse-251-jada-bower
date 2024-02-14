@@ -86,7 +86,7 @@ class Queue251():
 class Factory(threading.Thread):
     """ This is a factory.  It will create cars and place them on the car queue """
 
-    def __init__(self, cars_to_produce_sem, cars_to_sell_sem, car_queue, finished_producing_barrier, num_of_dealers, pid):
+    def __init__(self, cars_to_produce_sem, cars_to_sell_sem, car_queue, finished_producing_barrier, num_of_dealers):
         super().__init__()
         # All of the data that 1 factory needs to create cars and to place them in a queue.
         self.cars_to_produce = random.randint(200, 300) # DO NOT change.
@@ -95,7 +95,6 @@ class Factory(threading.Thread):
         self.cars = car_queue
         self.barrier = finished_producing_barrier
         self.num_of_dealers = num_of_dealers
-        self.pid = pid
         self.cars_produced = 0
 
     def run(self):
@@ -113,11 +112,12 @@ class Factory(threading.Thread):
             self.d_sem.release()
 
         # Wait until all of the factories are finished producing cars.
-        self.barrier.wait()
+        wait_num = self.barrier.wait()
 
         # "Wake up/signal" the dealerships one more time.  Select one factory to do this.
-        if self.pid == 1:
+        if wait_num == 0:
             for _ in range(self.num_of_dealers):
+                self.f_sem.acquire()
                 self.cars.put(None)
                 self.d_sem.release()
 
@@ -172,7 +172,7 @@ def run_production(factory_count, dealer_count):
     # You have no control over how many cars a factory will create in this assignment.
     factories = []
     for i in range(factory_count):
-        factories.append(Factory(cars_to_produce_sem, cars_to_sell_sem, car_queue, finished_producing_barrier, dealer_count, i+1))
+        factories.append(Factory(cars_to_produce_sem, cars_to_sell_sem, car_queue, finished_producing_barrier, dealer_count))
 
     # Create your dealerships.
     dealerships = []
