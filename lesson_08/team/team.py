@@ -139,58 +139,76 @@ def merge_sort_thread(arr):
             k += 1
 
 def merge_sort_process(arr):
+    count = mp.Value('i', 0)
+    sort_process_recursive(arr, count)
+
+def sort_process_recursive(arr, count):
     # Add your code here to use processes. Each time the merge algorithm does a recursive
     # call, you need to create a process to handle that call
 
     # Base case of the recursion - must have at least 2+ items
     if len(arr) > 1:
- 
+        
         # Finding the mid of the array
         mid = len(arr) // 2
-        left_list = arr[:mid]
-        right_list = arr[mid:]
-    
-        with mp.Manager() as manager:
+
+        if count.value < 16:
+            print(f'Count: {count.value}')
+            count.value += 2
             # Dividing the array elements
-            L = manager.list(left_list)
-    
+            L = mp.Manager().list(arr[:mid])
+
             # into 2 halves
-            R = manager.list(right_list)
+            R = mp.Manager().list(arr[mid:])
 
             # Sorting the first half
-            left_process = mp.Process(target=merge_sort_process, args=(L,))
-    
+            left_process = mp.Process(target=sort_process_recursive, args=(L, count))
+
             # Sorting the second half
-            right_process = mp.Process(target=merge_sort_process, args=(R,))
+            right_process = mp.Process(target=sort_process_recursive, args=(R, count))
 
             left_process.start()
             right_process.start()
 
             left_process.join()
             right_process.join()
+
+
+        else: 
+            print(f'Count: {count.value}')
+            L = arr[:mid]
+ 
+            # into 2 halves
+            R = arr[mid:]
     
-            i = j = k = 0
+            # Sorting the first half
+            merge_sort(L)
     
-            # Copy data to temporary arrays L[] and R[]
-            while i < len(L) and j < len(R):
-                if L[i] < R[j]:
-                    arr[k] = L[i]
-                    i += 1
-                else:
-                    arr[k] = R[j]
-                    j += 1
-                k += 1
-    
-            # Checking if any element was left
-            while i < len(L):
+            # Sorting the second half
+            merge_sort(R)
+
+        i = j = k = 0
+
+        # Copy data to temporary arrays L[] and R[]
+        while i < len(L) and j < len(R):
+            if L[i] < R[j]:
                 arr[k] = L[i]
                 i += 1
-                k += 1
-    
-            while j < len(R):
+            else:
                 arr[k] = R[j]
                 j += 1
-                k += 1
+            k += 1
+
+        # Checking if any element was left
+        while i < len(L):
+            arr[k] = L[i]
+            i += 1
+            k += 1
+
+        while j < len(R):
+            arr[k] = R[j]
+            j += 1
+            k += 1
                 
                 
 def main():
