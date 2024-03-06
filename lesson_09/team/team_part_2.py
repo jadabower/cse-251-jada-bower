@@ -38,8 +38,8 @@ Instructions:
 Requirements you must Implement:
 
 - [NEW] This is the same problem as part 1 with this new requirement: You will now implement a waiter.  
-  When a philosopher wants to eat, it will ask the waiter if it can. If the waiter indicates that a
-  philosopher can eat, the philosopher will pick up each fork and eat. There must not be a issue
+  When a philosopher wants to eat, he will ask the waiter if he can. If the waiter indicates that a
+  philosopher can eat, the philosopher will pick up each fork and eat. There must not be an issue
   picking up the two forks since the waiter is in control of the forks and when philosophers eat.
   When a philosopher is finished eating, they will inform the waiter that he/she is finished. If the
   waiter indicates to a philosopher that they can not eat, the philosopher will wait between 1 to 3
@@ -67,20 +67,126 @@ Suggestions and team Discussion:
 """
 
 import time
+import random
 import threading
 
 PHILOSOPHERS = 5
 MAX_MEALS_EATEN = PHILOSOPHERS * 5 # NOTE: Total meals to be eaten, not per philosopher!
+global meals_to_eat
+meals_to_eat = MAX_MEALS_EATEN
 
-# TODO - Create the Waiter class.
+class Waiter(threading.Thread):
+  def __init__(self):
+      super().__init__()
+
+  def _can_phil_eat(self, left_fork, right_fork):
+      return_val = False
+      # Check if both of phil's forks are available
+
+      # Try to acquire the fork on the left.
+      if left_fork.acquire():
+        # If we acquired the left fork, try to acquire the right fork.
+        if right_fork.acquire():
+          # We acquired both forks, so eat, put down the forks and ponder.
+          return_val = True
+          left_fork.release()
+          right_fork.release()
+        else:
+          # We acquired the left fork but not the right one, so release the left one and try again.
+          left_fork.release()
+      elif right_fork.acquire():
+        # If we acquired the right fork, try to acquire the left fork.
+        if left_fork.acquire():
+          # We acquired both forks, so eat, put down the forks and ponder.
+          return_val = True
+          right_fork.release()
+          left_fork.release()
+        else:
+          # We acquired the right fork but not the left one, so release the right one and try again.
+          right_fork.release()
+
+      return return_val
+
+# DONE: After asking the Waiter if he can eat,
+#       Phil should increase his number of meals eaten
+#       then with the fork_list_lock change the fork_list
+#       at both his right and left fork to be False.
+#       Then eat, then change them back to True (with the lock)
+#       and think.
+class Philosopher(threading.Thread):
+    def __init__(self, index, left_fork, right_fork, meals_to_eat_lock, waiter):
+        super().__init__()
+        self.pid = index + 1
+        self.left_fork  = left_fork
+        self.right_fork = right_fork
+        self.meals_to_eat_lock = meals_to_eat_lock
+        self.waiter = waiter
+        self.meals_eaten = 0
+
+    def run(self):
+      while self._should_eat():
+        if self.waiter._can_phil_eat(self.left_fork, self.right_fork):
+          with self.left_fork:
+            with self.right_fork:
+              self._eat()
+          self._ponder()
+            
+    def _should_eat(self):
+      # Check that we have not passed the threshold of meals to eat
+      return_val = False
+      with self.meals_to_eat_lock:
+        global meals_to_eat
+        if meals_to_eat <= 0:
+          return_val = False
+        else:
+          meals_to_eat -= 1
+          self.meals_eaten += 1
+          return_val = True
+      return return_val
+
+    def _eat(self):
+      # Eat for 1-3 seconds
+      eat_time = random.uniform(1.0, 3.0)
+      time.sleep(eat_time)
+      print(f'Philosopher {self.pid} is eating for {eat_time} seconds')
+
+    def _ponder(self):
+      # Think for 1-3 seconds
+      think_time = random.uniform(1.0, 3.0)
+      time.sleep(think_time)
+      print(f'Philosopher {self.pid} is thinking for {think_time} seconds')
+
 
 def main():
-    # TODO - Get an instance of the Waiter.
-    # TODO - Create the forks???
-    # TODO - Create PHILOSOPHERS philosophers.
-    # TODO - Start them eating and thinking.
-    # TODO - Display how many times each philosopher ate.
-    pass
+    global meals_to_eat
+    meals_to_eat = MAX_MEALS_EATEN
+    meals_to_eat_lock = threading.Lock()
+
+    waiter = Waiter()
+
+    # Create the forks.
+    forks = []
+    for _ in range(PHILOSOPHERS):
+        forks.append(threading.Lock())
+
+    # Create PHILOSOPHERS philosophers.
+    philosophers = []
+    for i in range(PHILOSOPHERS):
+      left_fork_index = i
+      right_fork_index = (i + 1) % PHILOSOPHERS
+      philosophers.append(Philosopher(i, forks[left_fork_index], forks[right_fork_index], meals_to_eat_lock, waiter))
+
+    # Start them eating and thinking.
+    for philosopher in philosophers:
+      philosopher.start()
+
+    # Wait for them to finish.
+    for philosopher in philosophers:
+      philosopher.join()
+
+    # Display how many times each philosopher ate.
+    for philosopher in philosophers:
+      print(f'Philosopher {philosopher.pid} ate {philosopher.meals_eaten}')
 
 
 if __name__ == '__main__':

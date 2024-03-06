@@ -54,23 +54,108 @@ Suggestions and team Discussion:
 - When you get your program working, how to you prove that no philosopher will starve?
   (Just looking at output from print() statements is not enough!)
 - Are the philosophers each eating and thinking the same amount?
-    - Modify your code to track how much eat philosopher is eating.
+    - Modify your code to track how much each philosopher is eating.
 - Using lists for the philosophers and forks will help you in this program. For example:
   philosophers[i] needs forks[i] and forks[i+1] to eat (the % operator helps).
 """
 
 import time
+import random
 import threading
 
 PHILOSOPHERS = 5
 MAX_MEALS_EATEN = PHILOSOPHERS * 5 # NOTE: Total meals to be eaten, not per philosopher!
 
+class Philosopher(threading.Thread):
+    def __init__(self, index, left_fork, right_fork, meals_to_eat_lock):
+        super().__init__()
+        self.pid = index + 1
+        self.left_fork = left_fork
+        self.right_fork = right_fork
+        self.meals_to_eat_lock = meals_to_eat_lock
+        self.meals_eaten = 0
+
+    def run(self):
+      while self._should_eat():
+        # Try to acquire the fork on the left.
+        if self.left_fork.acquire():
+          # If we acquired the left fork, try to acquire the right fork.
+          if self.right_fork.acquire():
+            # We acquired both forks, so eat, put down the forks and ponder.
+            self._eat()
+            self.left_fork.release()
+            self.right_fork.release()
+            self._ponder()
+          else:
+            # We acquired the left fork but not the right one, so release the left one and try again.
+            self.left_fork.release()
+        elif self.right_fork.acquire():
+          # If we acquired the right fork, try to acquire the left fork.
+          if self.left_fork.acquire():
+            # We acquired both forks, so eat, put down the forks and ponder.
+            self._eat()
+            self.right_fork.release()
+            self.left_fork.release()
+            self._ponder()
+          else:
+            # We acquired the right fork but not the left one, so release the right one and try again.
+            self.right_fork.release()
+
+    def _should_eat(self):
+      # Check that we have not passed the threshold of meals to eat
+      return_val = False
+      with self.meals_to_eat_lock:
+        global meals_to_eat
+        if meals_to_eat <= 0:
+          return_val = False
+        else:
+          meals_to_eat -= 1
+          self.meals_eaten += 1
+          return_val = True
+      return return_val
+
+    def _eat(self):
+      # Eat for 1-3 seconds
+      eat_time = random.uniform(1.0, 3.0)
+      time.sleep(eat_time)
+      print(f'Philosopher {self.pid} is eating for {eat_time} seconds')
+
+    def _ponder(self):
+      # Think for 1-3 seconds
+      think_time = random.uniform(1.0, 3.0)
+      time.sleep(think_time)
+      print(f'Philosopher {self.pid} is thinking for {think_time} seconds')
+
+
+
 def main():
-    # TODO - Create the forks.
-    # TODO - Create PHILOSOPHERS philosophers.
-    # TODO - Start them eating and thinking.
-    # TODO - Display how many times each philosopher ate.
-    pass
+    global meals_to_eat
+    meals_to_eat = MAX_MEALS_EATEN
+    meals_to_eat_lock = threading.Lock()
+
+    # Create the forks.
+    forks = []
+    for _ in range(PHILOSOPHERS):
+        forks.append(threading.Lock())
+
+    # Create PHILOSOPHERS philosophers.
+    philosophers = []
+    for i in range(PHILOSOPHERS):
+      left_fork_index = i
+      right_fork_index = (i + 1) % PHILOSOPHERS
+      philosophers.append(Philosopher(i, forks[left_fork_index], forks[right_fork_index], meals_to_eat_lock))
+
+    # Start them eating and thinking.
+    for philosopher in philosophers:
+      philosopher.start()
+
+    # Wait for them to finish.
+    for philosopher in philosophers:
+      philosopher.join()
+
+    # Display how many times each philosopher ate.
+    for philosopher in philosophers:
+      print(f'Philosopher {philosopher.pid} ate {philosopher.meals_eaten}')
 
 
 if __name__ == '__main__':
