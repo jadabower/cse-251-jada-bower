@@ -94,7 +94,8 @@ def solve_maze_recursively(maze, pos, COLOR, stop_lock):
             return True
     
     row, col = pos
-    maze.move(row, col, COLOR)
+    if maze.can_move_here(row, col):
+        maze.move(row, col, COLOR)
 
     if maze.at_end(row, col):
         with stop_lock:
