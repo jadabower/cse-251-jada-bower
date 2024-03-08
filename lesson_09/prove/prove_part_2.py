@@ -78,15 +78,66 @@ def get_color():
     return color
 
 
-# TODO: Add any function(s) you need, if any, here.
+def solve_maze_recursively(maze, pos, COLOR, stop_lock):
+    global stop
+    global thread_count
+
+    with stop_lock:
+        if stop:
+            return True
+    
+    row, col = pos
+    maze.move(row, col, COLOR)
+
+    if maze.at_end(row, col):
+        with stop_lock:
+            stop = True
+        return True
+    
+    threads = []
+    moves = maze.get_possible_moves(row, col)
+    if len(moves) > 0:
+        last_move = moves.pop()
+        for move in moves:
+            if maze.can_move_here(move[0], move[1]):
+                threads.append(threading.Thread(target=solve_maze_recursively, args=(maze, move, get_color(), stop_lock)))
+                thread_count += 1
+
+        for thread in threads:
+            thread.start()
+        
+        if maze.can_move_here(last_move[0], last_move[1]):
+            if solve_maze_recursively(maze, last_move, COLOR, stop_lock):
+                with stop_lock:
+                    stop = True
+                return True
+            
+        for thread in threads:
+            if thread.join():
+                with stop_lock:
+                    stop = True
+                return True
+    
+    with stop_lock:
+        if stop:
+            return True
+    maze.restore(row, col)
+    return False
 
 
 def solve_find_end(maze):
     """ Finds the end position using threads. Nothing is returned. """
     # When one of the threads finds the end position, stop all of them.
+    global thread_count
     global stop
-    # TODO: Complete this function.
     stop = False
+    thread_count = 0
+    starting_pos = maze.get_start_pos()
+    stop_lock = threading.Lock()
+    t = threading.Thread(target=solve_maze_recursively, args=(maze, starting_pos, get_color(), stop_lock))
+    t.start()
+    thread_count += 1
+    t.join()
 
 
 def find_end(log, filename, delay):
