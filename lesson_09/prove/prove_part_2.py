@@ -21,11 +21,18 @@ position:
 
 What would be your strategy?
 
-<Answer here>
+I would make it so when I create a new thread I would pass in the path
+that all previous paths took to get to that point. Then every time a
+thread moved it would add the position it moved to to the accumulating
+path. Then once one path found the exit, it's path would be returned 
+up the recursion tree and we could print it at the end.
 
 Why would it work?
 
-<Answer here>
+This would work because every individual thread would have a different
+path, so the ones that are incorrect would just be left to the garbage
+collector. But the correct path would be saved through the recursive
+return statements.
 
 """
 
