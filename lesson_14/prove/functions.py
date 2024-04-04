@@ -43,15 +43,32 @@ You will lose 10% if you don't detail your part 1 and part 2 code below
 
 Describe how to speed up part 1
 
-<Add your comments here>
+I was confused for a while on how to speed up my code because I had 
+it working before, but it was taking around 30 seconds for each part
+to run. But then I got some help in class to realize that I was 
+supposed to start a new thread on each recursive iteration through
+the tree rather than just using threads for the API requests. Once
+I did that, it got down to under 4 seconds.
 
 Describe how to speed up part 2
 
-<Add your comments here>
+Basically the same thing happened for part two as part 1, except that
+instead of using recursion for the breadth first search I used a Queue
+to keep the tree in breadth order, and then just looped through and 
+started a new thread for each ID on the queue, until the end of the
+tree. What made it speed up was like before. Earlier I had been simply
+calling the helper family for each ID on the queue. But it helped speed
+up the program a lot to make it a thread instead.
 
 Extra (Optional) 10% Bonus to speed up part 3
 
-<Add your comments here>
+I decided not to take the time to speed up part 3 because I tried using
+threading for that part as well, and using a lock (and I tried with a 
+semaphore and queue) to bottleneck how many children could be started 
+at once, but nothing that I did actually worked, somehow it just 
+kept getting deadlocked. So because I have a lot of other homework to
+worry about right now I will not be spending any more time on this
+assignment. 
 
 """
 from common import *
@@ -60,9 +77,9 @@ import queue
 # -----------------------------------------------------------------------------
 def depth_fs_pedigree(family_id, tree):
     # KEEP this function even if you don't implement it
-    # TODO - Implement depth first retrieval
-    # TODO - Printing out people and families that are retrieved from the server will help debugging
-
+    #      - Implement depth first retrieval
+    #      - Printing out people and families that are retrieved from the server will help debugging
+    
     def process_one_family(family_id):
         
         nonlocal tree
@@ -92,53 +109,62 @@ def depth_fs_pedigree(family_id, tree):
         # Retrieve children
         # print(f'    Retrieving Children : {str(new_family.get_children())[1:-1]}')
         children = []
-        children_threads = []
         for child_id in new_family.get_children():
             # Don't request a person if that person is in the tree already
             if not tree.does_person_exist(child_id):
                 req_child =  Request_thread(f'{TOP_API_URL}/person/{child_id}')
-                children_threads.append(req_child)
+                children.append(req_child)
 
-        for child in children_threads:
+        for child in children:
             child.start()
 
-        for child in children_threads:
+        for child in children:
             child.join()
 
-        for child in children_threads:
+        for child in children:
             child_person = Person(child.get_response())
-            children.append(child_person)
-        
+            tree.add_person(child_person)
+
         req_person1.join()
         req_person2.join()
 
         husband = Person(req_person1.get_response())
-        wife = Person(req_person2.get_response())
-
         tree.add_person(husband)
+        wife = Person(req_person2.get_response())
         tree.add_person(wife)
-        for c in children:
-            tree.add_person(c)
+
+        husband_branch = None
+        wife_branch = None
 
         # Add the husband's parent's family to the queue
         husband_family = husband.get_parentid()
         if husband_family != None:
             if not tree.does_family_exist(husband_family):
-                process_one_family(husband_family)
+                husband_branch = threading.Thread(target=process_one_family, args=(husband_family,))
+                husband_branch.start()
         
         # Add the wife's parent's family to the queue
         wife_family = wife.get_parentid()
         if wife_family != None:
             if not tree.does_family_exist(wife_family):
-                process_one_family(wife_family)
+                wife_branch = threading.Thread(target=process_one_family, args=(wife_family,))
+                wife_branch.start()
 
+        if husband_branch != None:
+            husband_branch.join()
+        if wife_branch != None:
+            wife_branch.join()
+
+    # Start the recursion at the starting family id
     process_one_family(family_id)
+
 
 # -----------------------------------------------------------------------------
 def breadth_fs_pedigree(family_id, tree):
     # KEEP this function even if you don't implement it
     #      - Implement breadth first retrieval
     #      - Printing out people and families that are retrieved from the server will help debugging
+
     family_queue = queue.Queue()
     family_queue.put(family_id)
 
@@ -172,23 +198,22 @@ def breadth_fs_pedigree(family_id, tree):
         # Retrieve children
         # print(f'    Retrieving Children : {str(new_family.get_children())[1:-1]}')
         children = []
-        children_threads = []
         for child_id in new_family.get_children():
             # Don't request a person if that person is in the tree already
             if not tree.does_person_exist(child_id):
                 req_child =  Request_thread(f'{TOP_API_URL}/person/{child_id}')
-                children_threads.append(req_child)
+                children.append(req_child)
 
-        for child in children_threads:
+        for child in children:
             child.start()
 
-        for child in children_threads:
+        for child in children:
             child.join()
 
-        for child in children_threads:
+        for child in children:
             child_person = Person(child.get_response())
-            children.append(child_person)
-        
+            tree.add_person(child_person)
+
         req_person1.join()
         req_person2.join()
 
@@ -197,8 +222,6 @@ def breadth_fs_pedigree(family_id, tree):
 
         tree.add_person(husband)
         tree.add_person(wife)
-        for c in children:
-            tree.add_person(c)
 
         # Add the husband's parent's family to the queue
         husband_family = husband.get_parentid()
@@ -212,9 +235,16 @@ def breadth_fs_pedigree(family_id, tree):
             family_queue.put(wife_family)
 
     next_to_process = family_queue.get()
+    thread_list = []
     while next_to_process != None:
-        process_one_family(next_to_process)
+        t = threading.Thread(target=process_one_family, args=(next_to_process,))
+        thread_list.append(t)
+        t.start()
         next_to_process = family_queue.get()
+
+    for t in thread_list:
+        t.join()
+
 # -----------------------------------------------------------------------------
 def breadth_fs_pedigree_limit5(family_id, tree):
     # KEEP this function even if you don't implement it
@@ -224,6 +254,7 @@ def breadth_fs_pedigree_limit5(family_id, tree):
     # KEEP this function even if you don't implement it
     # Implement breadth first retrieval
     # Printing out people and families that are retrieved from the server will help debugging
+
     family_queue = queue.Queue()
     family_queue.put(family_id)
     max_threads_sem = threading.Semaphore(5)
