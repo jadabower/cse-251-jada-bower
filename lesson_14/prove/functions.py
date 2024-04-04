@@ -3,6 +3,13 @@ Course: CSE 251, week 14
 File: functions.py
 Author: Jada Bower
 
+SUBMISSION COMMENT:
+4. My program satisfies all the requirements, plus I implemented part 3.
+(my part 3 takes longer than it should but it said there was no time limit
+for that part and I've already worked on this for many hours so at this
+point I don't really care all that much if I don't get the extra credit).
+
+
 Instructions:
 
 Depth First Search
